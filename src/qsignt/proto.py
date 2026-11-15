@@ -61,13 +61,45 @@ def parse_payload(raw: bytes) -> dict:
     return data
 
 
+SUBMIT_HEAD = "#qsignt key submit"
+OPEN_HEAD = "#qsignt key open"
+VERIFY_HEAD = "#qsignt verify"
+ARMOR_BEGIN = "-----BEGIN PGP MESSAGE-----"
+ARMOR_END = "-----END PGP MESSAGE-----"
+
+
+def squash_armor(armored: str) -> str:
+    """把 armor 密文压成单行。
+
+    armor 的头部、校验行和空行只是给人看的，gpg --decrypt 允许省略；
+    正文本身是 base64，去掉换行不会改变语义。压成一行后整条指令不再换行，
+    在 QQ 输入框里粘完直接回车发送，不会在中途被当成断句发出去。
+    """
+    text = armored.strip()
+    begin = text.find(ARMOR_BEGIN)
+    end = text.find(ARMOR_END, begin if begin >= 0 else 0)
+    body = text[begin + len(ARMOR_BEGIN) : end] if begin >= 0 and end > begin else text
+    lines = [ln.strip() for ln in body.splitlines() if ln.strip()]
+    # CRC 行（=XXXX）要保留：gpg 缺了它会把 END 那行当成数据，末尾十来个
+    # 减号报 invalid radix64 character，虽然能解出内容但退出码是 2
+    return "".join(lines)
+
+
 def submit_command(armored_ct: str) -> str:
-    return "#qsignt key submit " + armored_ct.strip()
+    return f"{SUBMIT_HEAD} {squash_armor(armored_ct)}"
+
+
+def parse_submit(body: str) -> str:
+    """从整条指令里取回提交载荷，兼容被换行切断的情况。"""
+    idx = body.find(SUBMIT_HEAD)
+    if idx < 0:
+        raise ValueError("文本里没有 key submit 指令")
+    return "".join(body[idx + len(SUBMIT_HEAD) :].split())
 
 
 def open_command(blob: str) -> str:
-    return "#qsignt key open " + blob.strip()
+    return f"{OPEN_HEAD} {''.join(blob.split())}"
 
 
 def verify_command(chall: str) -> str:
-    return "#qsignt verify " + chall.strip()
+    return f"{VERIFY_HEAD} {chall.strip()}"

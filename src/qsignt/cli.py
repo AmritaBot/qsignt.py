@@ -13,6 +13,8 @@ from pathlib import Path
 
 from . import COMMUNITY_GROUP, box, pgpx, proto
 
+QUOTE_PAIR_LEN = 2
+
 
 def state_dir() -> Path:
     root = os.environ.get("QSIGNT_STATE") or os.path.join(
@@ -37,8 +39,43 @@ def _load(name: str) -> dict | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _strip_wrappers(text: str) -> str:
+    """粘贴常会带上成对引号或全角引号，这里剥掉。"""
+    s = text.strip()
+    pairs = [('"', '"'), ("'", "'"), ("“", "”"), ("‘", "’")]
+    for left, right in pairs:
+        if len(s) >= QUOTE_PAIR_LEN and s[0] == left and s[-1] == right:
+            s = s[1:-1].strip()
+            break
+    return s
+
+
+def read_input(args: argparse.Namespace) -> str:
+    """三选一取输入：--file > --msg > 标准输入。
+
+    多行内容直接写在命令行里很容易被终端的换行当成回车，所以默认走标准输入，
+    命令行参数只作为临时手输的便利通道。
+    """
+    path = getattr(args, "file", None)
+    if path:
+        text = Path(path).expanduser().read_text(encoding="utf-8")
+    else:
+        msg = getattr(args, "msg", None)
+        if msg and msg != "-":
+            text = msg
+        else:
+            if sys.stdin.isatty():
+                print("粘贴内容后按 Ctrl-D 结束（Windows 用 Ctrl-Z 回车）", file=sys.stderr)
+            text = sys.stdin.read()
+
+    text = _strip_wrappers(text)
+    if not text:
+        raise ValueError("没有读到任何内容")
+    return text
+
+
 def cmd_enroll(args: argparse.Namespace) -> int:
-    init = proto.parse_init(args.msg)
+    init = proto.parse_init(read_input(args))
     priv, pub = box.new_keypair()
     payload = proto.build_payload(init.flow, pub)
     ct = pgpx.encrypt_to(init.armor, payload)
@@ -50,7 +87,7 @@ def cmd_enroll(args: argparse.Namespace) -> int:
             "eph": box.b64e(priv.private_bytes_raw()),
         },
     )
-    print("把下面这条整段发到群里：\n")
+    print("把下面这一整行复制发到群里（没有换行，粘完直接发送）：\n")
     print(proto.submit_command(ct))
     return 0
 
@@ -61,7 +98,7 @@ def cmd_open(args: argparse.Namespace) -> int:
         print("没有进行中的流程，先跑 enroll", file=sys.stderr)
         return 2
 
-    blob = args.msg.strip()
+    blob = read_input(args)
     # 回执可能是合并转发里带说明的一整段，先切到指令本身
     marker = "#qsignt key open"
     if marker in blob:
@@ -87,7 +124,7 @@ def cmd_open(args: argparse.Namespace) -> int:
         },
     )
     print(f"apikey 已保存到 {state_dir() / 'token.json'}\n")
-    print("把下面这条发到群里完成激活：\n")
+    print("把下面这一整行发到群里完成激活：\n")
     print(proto.verify_command(data["chall"]))
     return 0
 
@@ -137,11 +174,13 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     e = sub.add_parser("enroll", help="用群里的初始化消息生成提交指令")
-    e.add_argument("--msg", required=True, help="整段初始化消息（含 flow 与公钥）")
+    e.add_argument("--msg", help="整段初始化消息（多行内容建议改用管道或 --file）")
+    e.add_argument("-f", "--file", help="从文件读取初始化消息")
     e.set_defaults(func=cmd_enroll)
 
     o = sub.add_parser("open", help="解开 bot 回包，取出 apikey")
-    o.add_argument("--msg", required=True, help="bot 回的 key open 那条")
+    o.add_argument("--msg", help="bot 回的 key open 那条")
+    o.add_argument("-f", "--file", help="从文件读取回包")
     o.set_defaults(func=cmd_open)
 
     s = sub.add_parser("show", help="打印本地 apikey")

@@ -3,7 +3,7 @@ import json
 import pytest
 from cryptography.exceptions import InvalidTag
 
-from qsignt import box, proto
+from qsignt import box, pgpx, proto
 
 
 def test_seal_open_roundtrip():
@@ -36,3 +36,27 @@ def test_payload_roundtrip():
     assert data["flow"] == "AB12CD34"
     assert len(box.b64d(data["eph"])) == 32
     assert json.loads(raw)["kind"] == "enroll"
+
+
+def test_squash_armor_roundtrip():
+    armored = (
+        "-----BEGIN PGP MESSAGE-----\n\n"
+        "hF4Df4g8rfb1F18SAQdA/cgsm9VD2/gKVhuW/QcTgw6fEpqJpeMK4Z2qZMZC8gEw\n"
+        "E8y6iqIV4rjIQxRNQTUTClT0WE\n"
+        "=G/yh\n"
+        "-----END PGP MESSAGE-----\n"
+    )
+    squashed = proto.squash_armor(armored)
+    assert "\n" not in squashed
+    assert squashed.endswith("=G/yh")
+    restored = pgpx.wrap_armor(squashed)
+    assert restored.startswith("-----BEGIN PGP MESSAGE-----")
+    assert "=G/yh" in restored
+
+
+def test_submit_command_is_single_line():
+    armored = "-----BEGIN PGP MESSAGE-----\n\nAAAA\nBBBB\n=CCCC\n-----END PGP MESSAGE-----\n"
+    cmd = proto.submit_command(armored)
+    assert "\n" not in cmd
+    assert cmd.startswith("#qsignt key submit ")
+    assert proto.parse_submit(cmd) == "AAAABBBB=CCCC"

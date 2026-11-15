@@ -42,21 +42,23 @@ QQ 客户端与服务端的身份已由平台担保，需要防的只是群里�
 
 ## 流程
 
-群里发 `#qsignt init`，机器人回一条带公钥的消息。整段复制，然后：
+群里发 `#qsignt init`，机器人回一条带公钥的消息。整段复制，交给标准输入：
 
 ```
-qsignt enroll --msg "SIGNER-KEY-V1 flow=AB12CD34 exp=10m
------BEGIN PGP PUBLIC KEY BLOCK-----
-...
------END PGP PUBLIC KEY BLOCK-----"
+qsignt enroll
+# 粘贴后按 Ctrl-D（Windows 是 Ctrl-Z 再回车）
 ```
 
-工具打印一条 `#qsignt key submit ...`，发到群里。
+也可以先把内容存成文件：`qsignt enroll -f init.txt`。
 
-机器人回 `#qsignt key open ...`，复制后：
+工具会打印一条 `#qsignt key submit ...`，**整行没有换行**，粘进输入框直接发送即可。
+armor 的换行和 CRC 都被压进一行，中间不会出现断句。
+
+机器人回的 `#qsignt key open ...` 同理，整行复制后：
 
 ```
-qsignt open --msg "#qsignt key open AbCd..."
+qsignt open
+# 粘贴后 Ctrl-D
 ```
 
 工具把 apikey 存到 `~/.config/qsignt/token.json`（权限 0600），并打印
@@ -76,4 +78,5 @@ qsignt seal --eph <客户端公钥> --flow AB12CD34 --json reply.json
 
 - 中间中断不会白费：流程状态存在本地，`open` 之前重跑 `enroll` 会重开新流程。
 - 群消息会被折叠，复制时可能带上换行和空格，解析时已做容错。
+- 粘贴时包在引号里也能认，成对引号会被去掉。
 - apikey 明文只落在本地文件里，工具不做上传、不做同步。

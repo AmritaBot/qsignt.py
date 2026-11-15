@@ -9,6 +9,7 @@ AES key wrap，自己写等于给协议开新坑；gpg 是现成的、经过审�
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -17,6 +18,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 GPG = shutil.which("gpg") or shutil.which("gpg2")
+CRC_RE = re.compile(r"=[A-Za-z0-9+/]{4}$")
 
 
 class GPGError(RuntimeError):
@@ -133,7 +135,23 @@ def encrypt_to(armored_pub: str, plaintext: bytes) -> str:
 
 
 def decrypt_with(homedir_path: str, armored_ct: str) -> bytes:
-    return _run(["--decrypt"], homedir_path, stdin=armored_ct.encode())
+    text = armored_ct.strip()
+    if "-----BEGIN PGP MESSAGE-----" not in text:
+        # 群里传过来的是压平的单行 base64，gpg 不认裸 base64，先补回 armor 头
+        text = wrap_armor(text)
+    return _run(["--decrypt"], homedir_path, stdin=text.encode())
+
+
+def wrap_armor(squashed: str, width: int = 64) -> str:
+    """把压平的 base64 还原成标准 armor。CRC 行原样接在正文末尾。"""
+    text = "".join(squashed.split())
+    crc = ""
+    m = CRC_RE.search(text)
+    if m:
+        crc, text = m.group(0), text[: m.start()]
+    body = "\n".join(text[i : i + width] for i in range(0, len(text), width))
+    tail = f"\n{crc}" if crc else ""
+    return f"-----BEGIN PGP MESSAGE-----\n\n{body}{tail}\n-----END PGP MESSAGE-----\n"
 
 
 def parse_armor(text: str) -> str:
