@@ -6,6 +6,12 @@ QsigNT signer 的注册工具。在 QQ 群里跑一遍流程，把 apikey 换到
 
 依赖：Python 3.10+、gnupg 2.3+（需要 `gpg` 在 PATH 里）。
 
+```
+uv tool install qsignt
+# 或者
+pip install qsignt
+```
+
 ## 签名申请入口
 
 签名权限只在 QQ 群 **1132696493** 发放，进群后直接发 `#qsignt init` 就能开始，整个
