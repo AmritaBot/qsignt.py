@@ -4,6 +4,19 @@ QsigNT signer 的注册工具。在 QQ 群里跑一遍流程，把 apikey 换到
 
 依赖：Python 3.10+、gnupg 2.3+（需要 `gpg` 在 PATH 里）。
 
+## 签名申请入口
+
+签名权限只在 QQ 群 **1132696493** 发放，进群后直接发 `#qsignt init` 就能开始，整个
+流程在群里闭环，不需要单独找人。
+
+能拿到的东西：
+
+- 一个 `qsig_` 开头的 apikey，由 QsigNT daemon 校验，请求头带 `Authorization: Bearer <apikey>`
+- 单个 apikey 可绑定 5 个 QQ 号，按号先到先得，被占用的号不会二次发放
+- 每个 apikey 独立限速，默认 20 请求/秒，超了返回 429 和 `Retry-After`
+
+不在群里的请先加群，指令层不接受私聊之外的旁路申请。
+
 ## 为什么是 OpenPGP
 
 QQ 客户端与服务端的身份已由平台担保，需要防的只是群里旁观者顺手读到凭证。
