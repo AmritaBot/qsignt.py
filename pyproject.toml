@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qsignt"
+version = "0.1.0"
+description = "QsigNT signer 注册工具：OpenPGP 上行 + X25519 下行"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["cryptography>=42"]
+
+[project.scripts]
+qsignt = "qsignt.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv]
+package = true
