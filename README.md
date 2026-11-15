@@ -6,11 +6,7 @@ QsigNT signer 的注册工具。在 QQ 群里跑一遍流程，把 apikey 换到
 
 依赖：Python 3.10+、gnupg 2.3+（需要 `gpg` 在 PATH 里）。
 
-```
-uv tool install qsignt
-# 或者
-pip install qsignt
-```
+已发布到 PyPI，`pip install qsignt` 即可；不想装进环境就用 `uvx qsignt` 临时跑。
 
 ## 签名申请入口
 
