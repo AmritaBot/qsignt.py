@@ -11,7 +11,7 @@ import os
 import sys
 from pathlib import Path
 
-from . import box, pgpx, proto
+from . import COMMUNITY_GROUP, box, pgpx, proto
 
 
 def state_dir() -> Path:
@@ -43,10 +43,13 @@ def cmd_enroll(args: argparse.Namespace) -> int:
     payload = proto.build_payload(init.flow, pub)
     ct = pgpx.encrypt_to(init.armor, payload)
 
-    _save("flow.json", {
-        "flow": init.flow,
-        "eph": box.b64e(priv.private_bytes_raw()),
-    })
+    _save(
+        "flow.json",
+        {
+            "flow": init.flow,
+            "eph": box.b64e(priv.private_bytes_raw()),
+        },
+    )
     print("把下面这条整段发到群里：\n")
     print(proto.submit_command(ct))
     return 0
@@ -74,12 +77,15 @@ def cmd_open(args: argparse.Namespace) -> int:
         print("回包的 flow 和本地不一致，丢弃", file=sys.stderr)
         return 3
 
-    _save("token.json", {
-        "apikey": data["apikey"],
-        "flow": st["flow"],
-        "exp": data.get("exp"),
-        "state": "pending",
-    })
+    _save(
+        "token.json",
+        {
+            "apikey": data["apikey"],
+            "flow": st["flow"],
+            "exp": data.get("exp"),
+            "state": "pending",
+        },
+    )
     print(f"apikey 已保存到 {state_dir() / 'token.json'}\n")
     print("把下面这条发到群里完成激活：\n")
     print(proto.verify_command(data["chall"]))
@@ -117,6 +123,15 @@ def cmd_seal(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_community(args: argparse.Namespace) -> int:
+    """固定输出签名申请群，不接受参数。"""
+    print("签名申请群")
+    print(COMMUNITY_GROUP)
+    print()
+    print("进群后发 #qsignt init 开始注册")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="qsignt", description="QsigNT signer 注册工具")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -147,6 +162,9 @@ def build_parser() -> argparse.ArgumentParser:
     sl.add_argument("--flow", required=True)
     sl.add_argument("--json", required=True, help="待加密 JSON 文件路径")
     sl.set_defaults(func=cmd_seal)
+
+    cm = sub.add_parser("community", help="显示签名申请群号")
+    cm.set_defaults(func=cmd_community)
 
     return p
 

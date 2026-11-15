@@ -8,6 +8,7 @@ import time
 from dataclasses import dataclass
 
 from . import pgpx
+from .box import b64e
 
 HEADER = "SIGNER-KEY-V1"
 FLOW_RE = re.compile(r"flow=([0-9A-Za-z]{4,16})")
@@ -38,8 +39,6 @@ def parse_init(text: str) -> InitMessage:
 
 
 def build_payload(flow: str, eph_pub: bytes, kind: str = "enroll") -> bytes:
-    from .box import b64e
-
     return json.dumps(
         {
             "v": 1,

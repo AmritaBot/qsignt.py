@@ -1,5 +1,8 @@
 import json
 
+import pytest
+from cryptography.exceptions import InvalidTag
+
 from qsignt import box, proto
 
 
@@ -14,12 +17,8 @@ def test_seal_open_roundtrip():
 def test_flow_binding_mismatch():
     priv, pub = box.new_keypair()
     blob = box.seal(pub, "AB12CD34", {"v": 1})
-    try:
+    with pytest.raises(InvalidTag):
         box.open_sealed(blob, "OTHERFLOW", priv)
-    except Exception as exc:  # AEAD 解不开
-        assert "InvalidTag" in type(exc).__name__ or True
-    else:
-        raise AssertionError("换 flow 竟然解开了")
 
 
 def test_parse_init():

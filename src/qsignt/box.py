@@ -12,11 +12,15 @@ import os
 from typing import Any
 
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import (
+    X25519PrivateKey,
+    X25519PublicKey,
+)
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 VERSION = 1
+KEY_LEN = 32
 NONCE_LEN = 12
 TAG_LEN = 16
 INFO = b"qsignt-open-v1"
@@ -53,7 +57,7 @@ def _derive(shared: bytes, flow: str) -> bytes:
 
 def seal(peer_pub_raw: bytes, flow: str, payload: dict[str, Any]) -> str:
     """服务端侧。返回 base64url(bot_eph_pub || nonce || ciphertext)。"""
-    if len(peer_pub_raw) != 32:
+    if len(peer_pub_raw) != KEY_LEN:
         raise ValueError("peer public key must be 32 bytes")
 
     eph_priv, eph_pub = new_keypair()
@@ -74,8 +78,8 @@ def open_sealed(blob: str, flow: str, eph_priv: X25519PrivateKey) -> dict[str, A
         raise ValueError("下行载荷长度不足")
 
     bot_pub = raw[:32]
-    nonce = raw[32:32 + NONCE_LEN]
-    ct = raw[32 + NONCE_LEN:]
+    nonce = raw[32 : 32 + NONCE_LEN]
+    ct = raw[32 + NONCE_LEN :]
 
     shared = eph_priv.exchange(X25519PublicKey.from_public_bytes(bot_pub))
     key = _derive(shared, flow)

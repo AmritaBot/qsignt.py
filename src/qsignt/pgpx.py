@@ -12,9 +12,9 @@ import os
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
 GPG = shutil.which("gpg") or shutil.which("gpg2")
 
@@ -39,6 +39,7 @@ def _run(args: list[str], homedir: str, stdin: bytes | None = None) -> bytes:
         capture_output=True,
         env=env,
         timeout=120,
+        check=False,
     )
     if proc.returncode != 0:
         msg = proc.stderr.decode(errors="replace").strip()
@@ -75,10 +76,20 @@ def _fingerprints(homedir_path: str) -> list[str]:
     return fprs
 
 
-def generate(homedir_path: str, identity: str = "qsignt-bot", expire: str = "2y") -> tuple[str, str]:
+def generate(
+    homedir_path: str, identity: str = "qsignt-bot", expire: str = "2y"
+) -> tuple[str, str]:
     """生成 Ed25519 主钥 + cv25519 加密子钥，返回 (指纹, armored 公钥)。"""
     _run(
-        ["--passphrase", "", "--quick-generate-key", identity, "ed25519", "sign", expire],
+        [
+            "--passphrase",
+            "",
+            "--quick-generate-key",
+            identity,
+            "ed25519",
+            "sign",
+            expire,
+        ],
         homedir_path,
     )
     fprs = _fingerprints(homedir_path)
@@ -86,7 +97,10 @@ def generate(homedir_path: str, identity: str = "qsignt-bot", expire: str = "2y"
         raise GPGError("生成主钥后拿不到指纹")
     main = fprs[0]
 
-    _run(["--passphrase", "", "--quick-add-key", main, "cv25519", "encr", expire], homedir_path)
+    _run(
+        ["--passphrase", "", "--quick-add-key", main, "cv25519", "encr", expire],
+        homedir_path,
+    )
     armor = export_public(homedir_path, main)
     return main, armor
 
@@ -132,4 +146,4 @@ def parse_armor(text: str) -> str:
     stop = text.find(end, start)
     if stop < 0:
         raise ValueError("公钥块没有结束标记")
-    return text[start:stop + len(end)]
+    return text[start : stop + len(end)]

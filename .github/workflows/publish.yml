@@ -1,0 +1,60 @@
+name: Publish to PyPI on Release
+
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.10
+
+      - name: Sync environment
+        run: uv sync --dev
+
+      - name: Verify release tag matches package version
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          ver="$(uv run python -c 'import qsignt; print(qsignt.__version__)')"
+          echo "tag=$tag package=$ver"
+          if [ "$tag" != "$ver" ]; then
+            echo "::error::release tag v$tag 与 __version__ $ver 不一致"
+            exit 1
+          fi
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Pyright
+        run: uv run pyright
+
+      - name: Run pytest
+        run: uv run pytest -q
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Check artifacts
+        run: uv run python -m zipfile -l dist/*.whl | head -20 && ls -lh dist/
+
+      - name: Publish to PyPI
+        run: uv publish --token ${{ secrets.PYPI_API_TOKEN }}

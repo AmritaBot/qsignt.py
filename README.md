@@ -1,5 +1,7 @@
 # qsignt
 
+[![CI](https://github.com/AmritaBot/qsignt.py/actions/workflows/ci.yml/badge.svg)](https://github.com/AmritaBot/qsignt.py/actions/workflows/ci.yml)
+
 QsigNT signer 的注册工具。在 QQ 群里跑一遍流程，把 apikey 换到本地。
 
 依赖：Python 3.10+、gnupg 2.3+（需要 `gpg` 在 PATH 里）。
@@ -8,6 +10,14 @@ QsigNT signer 的注册工具。在 QQ 群里跑一遍流程，把 apikey 换到
 
 签名权限只在 QQ 群 **1132696493** 发放，进群后直接发 `#qsignt init` 就能开始，整个
 流程在群里闭环，不需要单独找人。
+
+群号固定写死在工具里，查一下就知道：
+
+```
+qsignt community
+```
+
+（不联网、不读配置，纯粹回显常量，防的是手抄错号。）
 
 能拿到的东西：
 
